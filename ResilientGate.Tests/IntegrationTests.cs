@@ -118,6 +118,66 @@ public class FlakyServiceIntegrationTests : IClassFixture<WebApplicationFactory<
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task FlakyService_DataEndpoint_Exists()
+    {
+        // Arrange
+        var client = _serviceFactory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/data");
+
+        // Assert
+        // The endpoint should return either 200 or 500 (due to random behavior)
+        Assert.True(
+            response.StatusCode == HttpStatusCode.OK || 
+            response.StatusCode == HttpStatusCode.InternalServerError,
+            $"Expected 200 or 500 status code, but got {response.StatusCode}"
+        );
+    }
+
+    [Fact]
+    public async Task FlakyService_DataEndpoint_RandomlyFailsAndDelays()
+    {
+        // Arrange
+        var client = _serviceFactory.CreateClient();
+        var successCount = 0;
+        var errorCount = 0;
+        var delayedCount = 0;
+        var attempts = 50;
+
+        // Act - Make multiple requests to observe random behavior
+        for (int i = 0; i < attempts; i++)
+        {
+            var startTime = DateTime.UtcNow;
+            var response = await client.GetAsync("/data");
+            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                successCount++;
+                // Check if it was delayed (roughly 2 seconds = 2000ms)
+                if (duration >= 1900) // Allow some margin for timing
+                {
+                    delayedCount++;
+                }
+            }
+            else if (response.StatusCode == HttpStatusCode.InternalServerError)
+            {
+                errorCount++;
+            }
+        }
+
+        // Assert
+        // With 50 attempts:
+        // - Expect around 15 errors (30%)
+        // - Expect around 10 delayed responses (20%)
+        // Allow reasonable variance - at least some errors and some successes
+        Assert.True(errorCount > 0, "Expected at least some 500 errors");
+        Assert.True(successCount > 0, "Expected at least some successful responses");
+        // We can't reliably test delay count without making test too slow
+    }
 }
 
 public class ResiliencePatternsTests

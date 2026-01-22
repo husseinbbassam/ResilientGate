@@ -84,6 +84,29 @@ app.MapGet("/api/configure", (ConcurrentDictionary<string, object> config) =>
 })
 .WithName("GetConfiguration");
 
+// Endpoint with random failures and delays for testing retry and hedging policies
+app.MapGet("/data", async () =>
+{
+    const int DelayMs = 2000;
+    var random = Random.Shared.NextDouble();
+    
+    // 30% chance of returning 500 error
+    if (random < 0.3)
+    {
+        return Results.StatusCode(500);
+    }
+    
+    // 20% chance of adding 2-second delay (30% to 50% range)
+    if (random < 0.5)
+    {
+        await Task.Delay(DelayMs);
+    }
+    
+    // Normal success response
+    return Results.Ok(new { message = "Success", timestamp = DateTime.UtcNow });
+})
+.WithName("Data");
+
 app.Run();
 
 record ConfigureRequest(string Mode, double? Rate);
