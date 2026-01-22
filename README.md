@@ -22,9 +22,10 @@ The project consists of three main components:
 The Gateway implements a comprehensive resilience pipeline with multiple strategies:
 
 #### 1. **Hedging Strategy**
-- Sends a second request if the first takes longer than 200ms
+- Sends a second request if the first takes longer than 250ms
 - Helps reduce tail latency
 - Configurable for idempotent operations
+- First successful response wins, other is cancelled
 
 #### 2. **Retry Policy**
 - Exponential backoff with jitter
@@ -73,6 +74,7 @@ The Gateway implements a comprehensive resilience pipeline with multiple strateg
 ### Prerequisites
 - .NET 9 SDK or later
 - Your favorite IDE (Visual Studio, VS Code, Rider)
+- Docker and Docker Compose (optional, for containerized deployment)
 
 ### Building the Solution
 
@@ -87,6 +89,18 @@ dotnet test
 ```
 
 ### Running the Applications
+
+**Option 1: Using Docker Compose (Recommended)**
+
+```bash
+docker-compose up --build
+```
+
+This will start both services:
+- Gateway: http://localhost:5000
+- FlakyService: http://localhost:5001
+
+**Option 2: Manual Start**
 
 **Terminal 1 - Start the FlakyService:**
 ```bash
@@ -104,22 +118,43 @@ The gateway will start on http://localhost:5000
 
 ### Testing the System
 
-**1. Check Gateway Status:**
+**1. Visual Circuit Breaker Demonstration:**
+
+Open your browser and navigate to:
+```
+http://localhost:5000/index.html
+```
+
+This interactive page demonstrates:
+- Real-time request/response visualization
+- Green indicators (✓) for successful requests
+- Red indicators (✗) for failed requests
+- Live statistics: Total Requests, Success Rate, etc.
+- Circuit Breaker behavior in action
+
+Click "Start" to begin sending requests to the `/data` endpoint and watch the resilience patterns work!
+
+**2. Check Gateway Status:**
 ```bash
 curl http://localhost:5000/
 ```
 
-**2. Check Gateway Health:**
+**3. Check Gateway Health:**
 ```bash
 curl http://localhost:5000/health
 ```
 
-**3. Test Proxied Request (via Gateway):**
+**4. Test Proxied Request (via Gateway):**
 ```bash
 curl http://localhost:5000/api/reliable
 ```
 
-**4. Configure FlakyService Failure Mode:**
+**5. Test the /data endpoint:**
+```bash
+curl http://localhost:5000/data
+```
+
+**6. Configure FlakyService Failure Mode:**
 ```bash
 # Set to intermittent mode (30% failure rate)
 curl -X POST http://localhost:5001/api/configure \
@@ -142,7 +177,7 @@ curl -X POST http://localhost:5001/api/configure \
   -d '{"mode":"none"}'
 ```
 
-**5. Test Resilience Patterns:**
+**7. Test Resilience Patterns:**
 
 With the FlakyService in error mode, make requests through the Gateway:
 ```bash
@@ -158,6 +193,7 @@ done
 - `GET /health` - Health check endpoint
 - `GET /api/reliable` - Always succeeds
 - `GET /api/flaky` - Behavior depends on configured mode
+- `GET /data` - Random failures (30% chance) and delays (20% chance) for testing resilience
 - `GET /api/configure` - Get current configuration
 - `POST /api/configure` - Set failure mode
 
@@ -199,11 +235,30 @@ ResilientGate/
 This project demonstrates:
 
 1. **YARP Configuration**: How to set up routing, health checks, and transforms
-2. **Polly v8 Syntax**: The new resilience pipeline builder pattern
+2. **Polly v8 Syntax**: The new resilience pipeline builder pattern using AddResilienceHandler
 3. **Resilience Strategies**: Combining multiple strategies for robust systems
 4. **Health Checks**: Active and passive health monitoring
 5. **Observability**: Logging and metrics for resilience events
 6. **Testing**: Integration testing with WebApplicationFactory
+7. **Docker Deployment**: Multi-service containerized deployment with docker-compose
+8. **Visual Demonstration**: Interactive HTML page for real-time resilience pattern visualization
+
+## Features Showcase
+
+### 🎯 Hedging Policy
+Configured to send a second request after 250ms delay, ensuring low-latency responses even when the backend is slow.
+
+### 🔄 Retry with Exponential Backoff
+Automatically retries failed requests up to 3 times with intelligent backoff and jitter to handle transient failures.
+
+### ⚡ Circuit Breaker
+Monitors failure rates and stops sending traffic to unhealthy backends, preventing cascade failures and allowing time for recovery.
+
+### 📊 Visual Demonstration
+Interactive HTML page at `/index.html` shows real-time resilience patterns in action with color-coded success/failure indicators.
+
+### 🐳 Docker Support
+Complete docker-compose setup for easy deployment and testing of the entire system.
 
 ## License
 
