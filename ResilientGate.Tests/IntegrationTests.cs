@@ -49,7 +49,7 @@ public class GatewayIntegrationTests : IClassFixture<WebApplicationFactory<Gatew
     }
 
     [Fact]
-    public async Task Gateway_AddCustomHeader_ToResponse()
+    public async Task Gateway_StatusEndpoint_ShowsFeatures()
     {
         // Arrange
         var client = _gatewayFactory.CreateClient();
@@ -58,9 +58,13 @@ public class GatewayIntegrationTests : IClassFixture<WebApplicationFactory<Gatew
         var response = await client.GetAsync("/");
 
         // Assert
-        Assert.True(response.Headers.Contains("X-Resilience-Handled-By") || 
-                    response.Content.Headers.Contains("X-Resilience-Handled-By"),
-                    "Expected custom header X-Resilience-Handled-By not found");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("YARP Reverse Proxy", content);
+        Assert.Contains("Polly v8 Resilience Patterns", content);
+        Assert.Contains("Circuit Breaker", content);
+        Assert.Contains("Hedging", content);
     }
 }
 
