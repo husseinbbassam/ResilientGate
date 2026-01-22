@@ -13,6 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add metrics for observability
 builder.Services.AddMetrics();
 
+// Register ConcurrencyLimiter as a singleton for proper resource management
+builder.Services.AddSingleton<ConcurrencyLimiter>(_ => new ConcurrencyLimiter(new ConcurrencyLimiterOptions
+{
+    PermitLimit = 100,
+    QueueLimit = 50
+}));
+
 // Configure YARP Reverse Proxy
 var proxyBuilder = builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
@@ -99,11 +106,7 @@ builder.Services.AddHttpClient("YarpClient")
         });
 
         // 4. Rate Limiter - Prevent the Gateway from being overwhelmed
-        var concurrencyLimiter = new ConcurrencyLimiter(new ConcurrencyLimiterOptions
-        {
-            PermitLimit = 100,
-            QueueLimit = 50
-        });
+        var concurrencyLimiter = context.ServiceProvider.GetRequiredService<ConcurrencyLimiter>();
         
         resiliencePipelineBuilder.AddRateLimiter(new RateLimiterStrategyOptions
         {
