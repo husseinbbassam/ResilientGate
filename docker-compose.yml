@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  flaky-service:
+    build:
+      context: .
+      dockerfile: ResilientGate.FlakyService/Dockerfile
+    container_name: resilientgate-flaky-service
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - resilientgate-network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: ResilientGate.Gateway/Dockerfile
+    container_name: resilientgate-gateway
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ReverseProxy__Clusters__flaky-cluster__Destinations__destination1__Address=http://flaky-service:8080
+    depends_on:
+      flaky-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - resilientgate-network
+
+networks:
+  resilientgate-network:
+    driver: bridge
