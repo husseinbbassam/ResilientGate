@@ -33,7 +33,7 @@ builder.Services.AddHttpClient("YarpClient")
     {
         var logger = context.ServiceProvider.GetRequiredService<ILogger<Program>>();
         
-        // 1. Hedging Strategy - Send a second request if the first one takes longer than 200ms
+        // 1. Hedging Strategy - Send a second request if the first one takes longer than 250ms
         resiliencePipelineBuilder.AddHedging(new HedgingStrategyOptions<HttpResponseMessage>
         {
             ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
@@ -44,7 +44,7 @@ builder.Services.AddHttpClient("YarpClient")
                 .Handle<HttpRequestException>()
                 .Handle<TimeoutException>(),
             MaxHedgedAttempts = 1,
-            Delay = TimeSpan.FromMilliseconds(200),
+            Delay = TimeSpan.FromMilliseconds(250),
             OnHedging = args =>
             {
                 logger.LogWarning("Hedging: Sending hedged request due to delay. Attempt: {Attempt}", args.AttemptNumber);
@@ -134,6 +134,9 @@ builder.Services.AddHttpClient("YarpClient")
     });
 
 var app = builder.Build();
+
+// Enable static files
+app.UseStaticFiles();
 
 // Map reverse proxy
 app.MapReverseProxy();
