@@ -1,0 +1,6 @@
+@ResilientGate.FlakyService_HostAddress = http://localhost:5068
+
+GET {{ResilientGate.FlakyService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
